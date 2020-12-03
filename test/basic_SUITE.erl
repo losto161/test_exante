@@ -19,7 +19,7 @@
 -define(RESULT, 0.24285714285714285).
 all() ->
     [
-        check_api
+     check_api
     ].
 
 init_per_suite(InitConfig) ->
@@ -44,4 +44,3 @@ check_api(_Config) ->
     timer:sleep(60000),
     Res5 = metric_app:average(?METRIC_NAME),
     ?assertEqual(0.0, Res5).
-

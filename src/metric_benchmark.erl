@@ -10,9 +10,9 @@
 
 %% API
 -export([
-    start_test/3,
-    start_sender/3
-]).
+         start_test/3,
+         start_sender/3
+        ]).
 
 -spec(start_test(Node::atom(), Limit::integer(), UpdatePeriod::integer()|random) -> ok | {error, cant_connect}).
 start_test(Node, Limit, UpdatePeriod) ->
@@ -33,4 +33,3 @@ start_sender(Node, MetricName, UpdatePeriod) when is_integer(UpdatePeriod) ->
     rpc:cast(Node, metric_app, report, [MetricName, rand:uniform()]),
     timer:sleep(UpdatePeriod * 1000),
     start_sender(Node, MetricName, UpdatePeriod).
-
