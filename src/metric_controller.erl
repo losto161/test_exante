@@ -28,28 +28,39 @@
 %%%===================================================================
 -spec(report(MetricName::binary(), Value::float()) -> any()).
 report(MetricName, Value) ->
-    ProcName = ?BIN2ATOM(MetricName),
-    case whereis(ProcName) of
-        undefined ->
+    case metric_register:send({?MODULE, MetricName}, {new_value, Value}) of
+        {badarg, {_Name, _Msg}} ->
             Spec = #{
-                     id => {?MODULE, MetricName},
-                     start => {?MODULE, start_link, [ProcName, Value]}
-                    },
+                id => {?MODULE, MetricName},
+                start => {?MODULE, start_link, [MetricName, Value]}
+            },
             supervisor:start_child(metric_mc_sup, Spec);
-        Pid when is_pid(Pid) ->
-            gen_server:cast(ProcName, {new_value, Value})
+        Pid when is_pid(Pid) -> ok
     end.
+%    ProcName = ?BIN2ATOM(MetricName),
+%    case whereis(ProcName) of
+%        undefined ->
+%            Spec = #{
+%                     id => {?MODULE, MetricName},
+%                     start => {?MODULE, start_link, [ProcName, Value]}
+%                    },
+%            supervisor:start_child(metric_mc_sup, Spec);
+%        Pid when is_pid(Pid) ->
+%            gen_server:cast(ProcName, {new_value, Value})
+%    end.
 
 -spec(average(MetricName::binary()) -> Result::float()).
 average(MetricName) ->
-    gen_server:call(?BIN2ATOM(MetricName), average).
+    gen_server:call({via, metric_register, {?MODULE, MetricName}}, average ).
+%%    gen_server:call(?BIN2ATOM(MetricName), average).
 
 %%%===================================================================
 %%% Spawning and gen_server implementation
 %%%===================================================================
 
 start_link(Name, Value) ->
-    gen_server:start_link({local, Name}, ?MODULE, [Value], []).
+    gen_server:start_link({via, metric_register, {?MODULE, Name}}, ?MODULE, [Value], []).
+%%    gen_server:start_link({local, Name}, ?MODULE, [Value], []).
 
 init([Value]) ->
     Period = application:get_env(metric, avg_period, 60),
@@ -67,12 +78,12 @@ handle_call(average, _From, State = #metric_controller_state{avg = Avg}) ->
 handle_call(_Request, _From, State = #metric_controller_state{}) ->
     {reply, ok, State}.
 
-handle_cast({new_value, Value}, State) ->
-    NewState = refresh(Value, State),
-    {noreply, NewState};
 handle_cast(_Request, State = #metric_controller_state{}) ->
     {noreply, State}.
 
+handle_info({new_value, Value}, State) ->
+    NewState = refresh(Value, State),
+    {noreply, NewState};
 handle_info({timeout, _Ref, calculate}, State = #metric_controller_state{period = Period, accumulator = Acc}) ->
     Avg = do_avg(Acc),
     erlang:start_timer(Period, self(), calculate),

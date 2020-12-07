@@ -34,7 +34,11 @@ init([]) ->
               start => {metric_mc_sup, start_link, []},
               type => supervisor
              },
-    ChildSpecs = [McSup],
+    RegSpec = #{
+        id => metric_register,
+        start => {metric_register, start_link, []}
+    },
+    ChildSpecs = [RegSpec, McSup],
     {ok, {SupFlags, ChildSpecs}}.
 
 %% internal functions
